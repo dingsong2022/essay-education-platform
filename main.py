@@ -40,12 +40,14 @@ def get_google_sheets():
     """Google Sheets 연결"""
     try:
         # Streamlit Cloud에서 secrets 사용
-        if "gcp_service_account" in st.secrets:
+        try:
             credentials = Credentials.from_service_account_info(
                 st.secrets["gcp_service_account"], scopes=SCOPES)
-        else:
+        except:
+            # 로컬에서는 파일 사용
             credentials = Credentials.from_service_account_file(
                 SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        
         gc = gspread.authorize(credentials)
         sheet = gc.open_by_key(SHEET_ID)
         return sheet
@@ -103,10 +105,9 @@ def register_user(username, password, name):
         for user in existing_users:
             if user['아이디'] == username:
                 return False, "이미 존재하는 아이디입니다"
-        
-        hashed_pw = hash_password(password)
+        # 평문 암호 저장 (교육용)        
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        users_sheet.append_row([username, hashed_pw, name, current_date])
+        users_sheet.append_row([username, password, name, current_date])
         
         return True, "회원가입이 완료되었습니다!"
         
