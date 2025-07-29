@@ -123,10 +123,9 @@ def login_user(username, password):
         
         users_sheet = sheet.worksheet('사용자정보')
         users = users_sheet.get_all_records()
-        hashed_pw = hash_password(password)
         
         for user in users:
-            if user['아이디'] == username and user['비밀번호'] == hashed_pw:
+            if user['아이디'] == username and user['비밀번호'] == password:
                 return True, "로그인 성공!", user['이름']
         
         return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
