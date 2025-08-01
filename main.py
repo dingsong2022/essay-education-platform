@@ -123,10 +123,11 @@ def login_user(username, password):
         users = users_sheet.get_all_records()
         
         for user in users:
+            print(f"시트에서 읽은 데이터: 아이디='{user['아이디']}', 비밀번호='{user['비밀번호']}'")
             if user['아이디'] == username and user['비밀번호'] == password:
                 return True, "로그인 성공!", user['이름']
         
-        return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
+                return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
         
     except Exception as e:
         return False, f"로그인 중 오류 발생: {str(e)}", None
