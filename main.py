@@ -75,20 +75,20 @@ def login_teacher(username, password):
                 teacher_id = teacher.get('아이디', '')
                 teacher_pw = teacher.get('비밀번호', '')
                 
-                # 평문 비밀번호 또는 해시화된 비밀번호로 확인
-                if teacher_id == username and teacher_pw == password:
+                # 평문 비밀번호로 확인
+                if str(teacher_id).strip() == str(username).strip() and str(teacher_pw).strip() == str(password).strip():
                     return True
             
             return False
             
         except gspread.WorksheetNotFound:
             # '교사정보' 시트가 없으면 기본 계정으로 확인
-            return username == TEACHER_USERNAME and password == TEACHER_PASSWORD
+            return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
             
     except Exception as e:
         print(f"교사 로그인 확인 중 오류: {e}")
         # 오류 발생 시 기본 계정으로 폴백
-        return username == TEACHER_USERNAME and password == TEACHER_PASSWORD
+        return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
 
 def register_user(username, password, name):
     """사용자 등록 함수"""
@@ -101,7 +101,8 @@ def register_user(username, password, name):
         existing_users = users_sheet.get_all_records()
         
         for user in existing_users:
-            if user['아이디'] == username:
+            for user in existing_users:
+                if str(user['아이디']).strip() == str(username).strip():
                 return False, "이미 존재하는 아이디입니다"
         # 평문 암호 저장 (교육용)        
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -123,11 +124,10 @@ def login_user(username, password):
         users = users_sheet.get_all_records()
         
         for user in users:
-            st.write(f"디버그: 아이디='{user['아이디']}', 비밀번호='{user['비밀번호']}'")
-            if user['아이디'] == username and user['비밀번호'] == password:
+            if str(user['아이디']).strip() == str(username).strip() and str(user['비밀번호']).strip() == str(password).strip():
                 return True, "로그인 성공!", user['이름']
         
-                return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
+        return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
         
     except Exception as e:
         return False, f"로그인 중 오류 발생: {str(e)}", None
