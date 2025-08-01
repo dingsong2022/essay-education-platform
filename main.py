@@ -123,7 +123,7 @@ def login_user(username, password):
         users = users_sheet.get_all_records()
         
         for user in users:
-            print(f"시트에서 읽은 데이터: 아이디='{user['아이디']}', 비밀번호='{user['비밀번호']}'")
+            st.write(f"디버그: 아이디='{user['아이디']}', 비밀번호='{user['비밀번호']}'")
             if user['아이디'] == username and user['비밀번호'] == password:
                 return True, "로그인 성공!", user['이름']
         
