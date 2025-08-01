@@ -70,15 +70,13 @@ def login_teacher(username, password):
             teachers_sheet = sheet.worksheet('교사정보')
             teachers = teachers_sheet.get_all_records()
             
-            # 두 가지 방식으로 확인: 해시화된 비밀번호와 평문 비밀번호
-            hashed_pw = hash_password(password)
-            
+                        
             for teacher in teachers:
                 teacher_id = teacher.get('아이디', '')
                 teacher_pw = teacher.get('비밀번호', '')
                 
                 # 평문 비밀번호 또는 해시화된 비밀번호로 확인
-                if teacher_id == username and (teacher_pw == password or teacher_pw == hashed_pw):
+                if teacher_id == username and teacher_pw == password:
                     return True
             
             return False
