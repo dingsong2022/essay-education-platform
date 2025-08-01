@@ -101,8 +101,7 @@ def register_user(username, password, name):
         existing_users = users_sheet.get_all_records()
         
         for user in existing_users:
-            for user in existing_users:
-                if str(user['아이디']).strip() == str(username).strip():
+            if str(user['아이디']).strip() == str(username).strip():
                 return False, "이미 존재하는 아이디입니다"
         # 평문 암호 저장 (교육용)        
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
