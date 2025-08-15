@@ -13,8 +13,8 @@ import plotly.graph_objects as go
 
 # 페이지 설정
 st.set_page_config(
-    page_title="논술 평가 플랫폼",
-    page_icon="📝",
+    page_title="English Essay Writing Studio",
+    page_icon="✍️",
     layout="wide"
 )
 
@@ -25,13 +25,12 @@ SERVICE_ACCOUNT_FILE = 'credentials.json'
 SHEET_ID = '1_HkNcnWX_31GhJwDcT3a2D41BJvbF9Njmwi5d5T8pWQ'
 
 # Gemini AI 설정
-# Gemini AI 설정
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 except:
     genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-# 교사 계정 설정
+# 교사 계정 설정 (고정)
 TEACHER_USERNAME = "teacher"
 TEACHER_PASSWORD = "teacher123"
 
@@ -60,35 +59,8 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def login_teacher(username, password):
-    """교사 로그인 검증 - 구글시트 '교사정보'에서 확인"""
-    try:
-        sheet = get_google_sheets()
-        if not sheet:
-            return False
-        
-        try:
-            teachers_sheet = sheet.worksheet('교사정보')
-            teachers = teachers_sheet.get_all_records()
-            
-                        
-            for teacher in teachers:
-                teacher_id = teacher.get('아이디', '')
-                teacher_pw = teacher.get('비밀번호', '')
-                
-                # 평문 비밀번호로 확인
-                if str(teacher_id).strip() == str(username).strip() and str(teacher_pw).strip() == str(password).strip():
-                    return True
-            
-            return False
-            
-        except gspread.WorksheetNotFound:
-            # '교사정보' 시트가 없으면 기본 계정으로 확인
-            return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
-            
-    except Exception as e:
-        print(f"교사 로그인 확인 중 오류: {e}")
-        # 오류 발생 시 기본 계정으로 폴백
-        return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
+    """교사 로그인 검증 - 고정 계정으로 단순화"""
+    return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
 
 def register_user(username, password, name):
     """사용자 등록 함수"""
@@ -563,15 +535,16 @@ def render_teacher_dashboard():
             student_id = selected_student.split('(')[1].split(')')[0]
             student_essays = [essay for essay in all_essays if essay['아이디'] == student_id]
             
-            dates = [essay['날짜'][:10] for essay in reversed(student_essays)]
-            scores = [int(essay['점수']) if essay['점수'] else 0 for essay in reversed(student_essays)]
+            # 회차별로 변경 (최신 데이터부터 역순)
+            essay_numbers = list(range(len(student_essays), 0, -1))
+            scores = [int(essay['점수']) if essay['점수'] else 0 for essay in student_essays]
             
             if len(scores) > 1:
                 fig_line = px.line(
-                    x=dates, 
+                    x=essay_numbers, 
                     y=scores, 
                     title=f"{selected_student.split('(')[0].strip()} 학생의 점수 추이",
-                    labels={'x': '날짜', 'y': '점수'}
+                    labels={'x': '회차', 'y': '점수'}
                 )
                 fig_line.update_layout(height=300)
                 st.plotly_chart(fig_line, use_container_width=True)
@@ -677,7 +650,7 @@ def main():
     if 'is_teacher' not in st.session_state:
         st.session_state.is_teacher = False
 
-    st.title("📝 논술 평가 플랫폼")
+    st.title("✍️ English Essay Writing Studio")
     st.markdown("---")
     
     if not st.session_state.logged_in:
@@ -713,10 +686,11 @@ def main():
         
         with tab2:
             st.subheader("교사 로그인")
+            st.info("📌 교사 계정: ID: teacher / PW: teacher123")
             
             with st.form("teacher_login_form"):
-                teacher_username = st.text_input("교사 아이디", placeholder="교사 아이디를 입력하세요")
-                teacher_password = st.text_input("교사 비밀번호", type="password", placeholder="교사 비밀번호를 입력하세요")
+                teacher_username = st.text_input("교사 아이디", placeholder="teacher")
+                teacher_password = st.text_input("교사 비밀번호", type="password", placeholder="teacher123")
                 
                 submitted = st.form_submit_button("👨‍🏫 교사 로그인", use_container_width=True)
                 
@@ -733,8 +707,6 @@ def main():
                             st.error("교사 아이디 또는 비밀번호가 올바르지 않습니다")
                     else:
                         st.error("아이디와 비밀번호를 모두 입력해주세요")
-            
-            st.info("💡 교사 계정은 별도로 관리됩니다")
         
         with tab3:
             st.subheader("학생 회원가입")
@@ -819,19 +791,23 @@ def main():
                     custom_topic = st.text_area(
                         "논술 주제를 입력하세요:",
                         height=100,
-                        placeholder="예: Write about the advantages and disadvantages of social media in modern society."
+                        placeholder="예: Write about your dream vacation plan and explain why you want to go there."
                     )
                     selected_topic = custom_topic
                 else:
+                    # 중학생 수준에 맞는 주제들로 변경
                     sample_topics = [
-                        "Write about the advantages and disadvantages of social media in modern society.",
-                        "Discuss the importance of environmental protection and what individuals can do to help.",
-                        "Explain the role of technology in education and its impact on learning.",
-                        "Describe the effects of globalization on local cultures and traditions.",
-                        "Analyze the pros and cons of online shopping compared to traditional shopping.",
-                        "Discuss the importance of learning a foreign language in today's world.",
-                        "Write about the impact of artificial intelligence on future job markets.",
-                        "Explain the benefits and challenges of remote work or online learning."
+                        "Write about your dream vacation plan and explain why you want to go there.",
+                        "Describe the rules you think are important for a classroom and explain why.",
+                        "Write a detective story about solving a mystery with the clues you find.",
+                        "Plan an activity for Earth Day and explain how it helps protect the environment.",
+                        "Write about three things you will do to protect the environment in your daily life.",
+                        "Describe your future career plans and explain why you chose this path.",
+                        "Write about a person you admire and explain why they are your role model.",
+                        "Explain how to use smartphones wisely and responsibly.",
+                        "Compare online shopping and traditional shopping. Which do you prefer and why?",
+                        "Write about how to use social media in a positive and safe way.",
+                        "Write a book review about your favorite book and recommend it to your friends."
                     ]
                     
                     selected_topic = st.selectbox(
@@ -966,18 +942,21 @@ def main():
                     chatbot_topic = st.text_input(
                         "대화하고 싶은 주제를 입력하세요:",
                         value=st.session_state.chatbot_topic,
-                        placeholder="예: 소셜미디어의 장단점에 대해 이야기해보고 싶어요"
+                        placeholder="예: 꿈의 여행 계획에 대해 이야기해보고 싶어요"
                     )
                 else:
                     sample_topics_korean = [
-                        "소셜미디어의 장단점",
-                        "환경보호의 중요성",
-                        "교육에서 기술의 역할",
-                        "세계화가 지역 문화에 미치는 영향",
-                        "온라인 쇼핑 vs 전통적 쇼핑",
-                        "외국어 학습의 중요성",
-                        "인공지능이 미래 직업에 미치는 영향",
-                        "원격근무와 온라인 학습의 장단점"
+                        "꿈의 여행 계획 세우기",
+                        "학급 규칙 정하기",
+                        "추리 소설 쓰기",
+                        "환경의 날 활동 기획하기",
+                        "환경 보호 실천 방법",
+                        "진로 계획 세우기",
+                        "롤모델 소개하기",
+                        "스마트폰의 현명한 사용법",
+                        "온라인 쇼핑과 오프라인 쇼핑 비교",
+                        "올바른 SNS 사용법",
+                        "좋아하는 책 추천하기"
                     ]
                     
                     chatbot_topic = st.selectbox(
@@ -1026,13 +1005,13 @@ def main():
                                 'user': user_message,
                                 'bot': bot_response
                             })
-                            
-                            st.success("✅ 새로운 대화가 추가되었습니다!")
-                            with st.expander("📝 방금 나눈 대화", expanded=True):
-                                st.markdown(f"**👤 학생:** {user_message}")
-                                st.markdown(f"**🤖 AI 도우미:** {bot_response}")
-                            
-                            st.rerun()
+                        
+                        # 새로운 대화를 바로 표시
+                        st.success("✅ 새로운 대화가 추가되었습니다!")
+                        st.markdown("### 📝 방금 나눈 대화")
+                        st.markdown(f"**👤 학생:** {user_message}")
+                        st.markdown(f"**🤖 AI 도우미:** {bot_response}")
+                        st.markdown("---")
                     
                     st.markdown("#### 💡 빠른 질문")
                     quick_questions = [
@@ -1175,22 +1154,31 @@ def main():
                         st.info(f"📌 총 {len(filtered_essays)}개 중 10개만 표시됩니다.")
                 
                 with detail_tab2:
-                    st.markdown("### 📊 점수 변화 추이")
+                    st.markdown("### 📊 점수 변화 추이 (회차별)")
                     
                     if len(user_essays) >= 2:
-                        dates = [essay['날짜'][:10] for essay in reversed(user_essays[-10:])]
-                        scores = [int(essay['점수']) if essay['점수'] else 0 for essay in reversed(user_essays[-10:])]
+                        # 회차별로 변경 (최신 데이터부터 역순으로 정렬된 상태에서 회차 번호 부여)
+                        essay_numbers = list(range(len(user_essays), 0, -1))
+                        scores = [int(essay['점수']) if essay['점수'] else 0 for essay in user_essays]
                         
-                        chart_data = {
-                            '날짜': dates,
-                            '점수': scores
-                        }
+                        # 그래프를 위해 데이터를 뒤집어서 회차 순서대로 표시
+                        essay_numbers_display = list(reversed(essay_numbers))
+                        scores_display = list(reversed(scores))
                         
-                        st.line_chart(data=chart_data, x='날짜', y='점수', height=300)
+                        chart_data = pd.DataFrame({
+                            '회차': essay_numbers_display,
+                            '점수': scores_display
+                        })
                         
-                        if len(scores) >= 3:
-                            trend = "상승" if scores[-1] > scores[0] else "하락" if scores[-1] < scores[0] else "유지"
-                            st.info(f"📈 **전체적인 추세:** {trend} (첫 점수: {scores[0]}점 → 최근 점수: {scores[-1]}점)")
+                        fig = px.line(chart_data, x='회차', y='점수', title='회차별 점수 추이', markers=True)
+                        fig.update_layout(height=400)
+                        fig.update_xaxis(title='회차')
+                        fig.update_yaxis(title='점수')
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        if len(scores_display) >= 3:
+                            trend = "상승" if scores_display[-1] > scores_display[0] else "하락" if scores_display[-1] < scores_display[0] else "유지"
+                            st.info(f"📈 **전체적인 추세:** {trend} (1회차: {scores_display[0]}점 → 최근 회차: {scores_display[-1]}점)")
                     
                     else:
                         st.info("📊 점수 추이를 보려면 최소 2개 이상의 논술문이 필요합니다.")
