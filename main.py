@@ -536,18 +536,19 @@ def render_teacher_dashboard():
             student_essays = [essay for essay in all_essays if essay['아이디'] == student_id]
             
             # 회차별로 변경 (최신 데이터부터 역순)
-            essay_numbers = list(range(len(student_essays), 0, -1))
             scores = [int(essay['점수']) if essay['점수'] else 0 for essay in student_essays]
             
             if len(scores) > 1:
-                fig_line = px.line(
-                    x=essay_numbers, 
-                    y=scores, 
-                    title=f"{selected_student.split('(')[0].strip()} 학생의 점수 추이",
-                    labels={'x': '회차', 'y': '점수'}
-                )
-                fig_line.update_layout(height=300)
-                st.plotly_chart(fig_line, use_container_width=True)
+                # 1회차부터 시작하도록 데이터 정렬
+                scores_display = list(reversed(scores))
+                essay_numbers = list(range(1, len(scores_display) + 1))
+                
+                chart_data = {
+                    '회차': essay_numbers,
+                    '점수': scores_display
+                }
+                
+                st.line_chart(data=chart_data, x='회차', y='점수', height=300)
             else:
                 st.info("점수 추이를 보려면 최소 2개 이상의 제출물이 필요합니다.")
     
@@ -1158,23 +1159,18 @@ def main():
                     
                     if len(user_essays) >= 2:
                         # 회차별로 변경 (최신 데이터부터 역순으로 정렬된 상태에서 회차 번호 부여)
-                        essay_numbers = list(range(len(user_essays), 0, -1))
                         scores = [int(essay['점수']) if essay['점수'] else 0 for essay in user_essays]
                         
-                        # 그래프를 위해 데이터를 뒤집어서 회차 순서대로 표시
-                        essay_numbers_display = list(reversed(essay_numbers))
+                        # 그래프를 위해 데이터를 뒤집어서 회차 순서대로 표시 (1회차부터 시작)
                         scores_display = list(reversed(scores))
+                        essay_numbers_display = list(range(1, len(scores_display) + 1))
                         
-                        chart_data = pd.DataFrame({
+                        chart_data = {
                             '회차': essay_numbers_display,
                             '점수': scores_display
-                        })
+                        }
                         
-                        fig = px.line(chart_data, x='회차', y='점수', title='회차별 점수 추이', markers=True)
-                        fig.update_layout(height=400)
-                        fig.update_xaxis(title='회차')
-                        fig.update_yaxis(title='점수')
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.line_chart(data=chart_data, x='회차', y='점수', height=300)
                         
                         if len(scores_display) >= 3:
                             trend = "상승" if scores_display[-1] > scores_display[0] else "하락" if scores_display[-1] < scores_display[0] else "유지"
