@@ -798,7 +798,7 @@ def main():
                 else:
                     # 중학생 수준에 맞는 주제들로 변경
                     sample_topics = [
-                        "Write about your dream vacation plan and explain why you want to go there.",
+                        "Write a text about your plans for the class trip.",
                         "Describe the rules you think are important for a classroom and explain why.",
                         "Write a detective story about solving a mystery with the clues you find.",
                         "Plan an activity for Earth Day and explain how it helps protect the environment.",
