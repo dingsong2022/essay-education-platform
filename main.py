@@ -127,26 +127,8 @@ def get_ai_feedback(essay_text, topic):
 
         genai.configure(api_key=api_key)
 
-        # 여러 모델명 시도
-        model_names = [
-            'gemini-1.5-pro',
-            'gemini-1.5-flash',
-            'gemini-pro'
-        ]
-
-        model = None
-        last_error = None
-
-        for model_name in model_names:
-            try:
-                model = genai.GenerativeModel(model_name)
-                break
-            except Exception as e:
-                last_error = str(e)
-                continue
-
-        if not model:
-            return f"사용 가능한 Gemini 모델을 찾을 수 없습니다. 마지막 오류: {last_error}\n\n총점: 0/100점"
+        # 0.7.2 버전에서 작동하는 모델명 사용
+        model = genai.GenerativeModel('gemini-pro')
         
         prompt = f"""
         한국 학생이 작성한 영어 논술문을 평가해주세요.
@@ -218,23 +200,8 @@ def get_chatbot_response(user_message, topic, conversation_history):
 
         genai.configure(api_key=api_key)
 
-        # 여러 모델명 시도
-        model_names = [
-            'gemini-1.5-pro',
-            'gemini-1.5-flash',
-            'gemini-pro'
-        ]
-
-        model = None
-        for model_name in model_names:
-            try:
-                model = genai.GenerativeModel(model_name)
-                break
-            except:
-                continue
-
-        if not model:
-            return "사용 가능한 Gemini 모델을 찾을 수 없습니다. API 키를 확인해주세요."
+        # 0.7.2 버전에서 작동하는 모델명 사용
+        model = genai.GenerativeModel('gemini-pro')
         
         context = ""
         if conversation_history:
