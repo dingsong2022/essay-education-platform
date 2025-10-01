@@ -127,8 +127,26 @@ def get_ai_feedback(essay_text, topic):
 
         genai.configure(api_key=api_key)
 
-        # 0.7.2 버전에서 작동하는 모델명 사용
-        model = genai.GenerativeModel('gemini-pro')
+        # 여러 모델을 순차적으로 시도 (할당량 초과 대비)
+        model_names = [
+            'gemini-1.5-flash',
+            'gemini-pro',
+            'gemini-1.5-pro'
+        ]
+
+        model = None
+        last_error = None
+
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                break
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        if not model:
+            return f"모든 Gemini 모델 사용 실패. 마지막 오류: {last_error}\n\n총점: 0/100점"
         
         prompt = f"""
         한국 학생이 작성한 영어 논술문을 평가해주세요.
@@ -200,8 +218,24 @@ def get_chatbot_response(user_message, topic, conversation_history):
 
         genai.configure(api_key=api_key)
 
-        # 0.7.2 버전에서 작동하는 모델명 사용
-        model = genai.GenerativeModel('gemini-pro')
+        # 여러 모델을 순차적으로 시도 (할당량 초과 대비)
+        model_names = [
+            'gemini-1.5-flash',
+            'gemini-pro',
+            'gemini-1.5-pro'
+        ]
+
+        model = None
+
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                break
+            except:
+                continue
+
+        if not model:
+            return "모든 Gemini 모델 사용 실패. API 키를 확인해주세요."
         
         context = ""
         if conversation_history:
