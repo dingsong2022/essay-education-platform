@@ -119,22 +119,8 @@ def extract_score_from_feedback(feedback):
 def get_ai_feedback(essay_text, topic):
     """Gemini AI를 통한 영어 논술 피드백"""
     try:
-        model_names = [
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-flash',
-            'gemini-1.5-pro'
-        ]
-        
-        model = None
-        for model_name in model_names:
-            try:
-                model = genai.GenerativeModel(model_name)
-                break
-            except:
-                continue
-        
-        if not model:
-            return "사용 가능한 Gemini 모델을 찾을 수 없습니다."
+        # 2025년 현재 사용 가능한 모델명
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         한국 학생이 작성한 영어 논술문을 평가해주세요.
@@ -185,30 +171,22 @@ def get_ai_feedback(essay_text, topic):
         """
         
         response = model.generate_content(prompt)
+
+        if not response or not response.text:
+            return f"AI 응답이 비어있습니다. API 상태를 확인해주세요.\n\n총점: 0/100점"
+
         return response.text
-        
+
     except Exception as e:
-        return f"AI 피드백 생성 중 오류가 발생했습니다: {str(e)}"
+        error_detail = str(e)
+        st.error(f"상세 오류: {error_detail}")
+        return f"AI 피드백 생성 중 오류가 발생했습니다: {error_detail}\n\n해결방법:\n1. Gemini API 키가 유효한지 확인\n2. API 할당량이 남아있는지 확인\n3. 인터넷 연결 확인\n\n총점: 0/100점"
 
 def get_chatbot_response(user_message, topic, conversation_history):
     """AI 챗봇 응답 생성 - 소크라테스식 질문 중심 + 제한적 아이디어 제공"""
     try:
-        model_names = [
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-flash',
-            'gemini-1.5-pro'
-        ]
-        
-        model = None
-        for model_name in model_names:
-            try:
-                model = genai.GenerativeModel(model_name)
-                break
-            except:
-                continue
-        
-        if not model:
-            return "사용 가능한 Gemini 모델을 찾을 수 없습니다."
+        # 2025년 현재 사용 가능한 모델명
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         context = ""
         if conversation_history:
@@ -249,10 +227,14 @@ def get_chatbot_response(user_message, topic, conversation_history):
         """
         
         response = model.generate_content(prompt)
+
+        if not response or not response.text:
+            return "AI 응답이 비어있습니다. 잠시 후 다시 시도해주세요."
+
         return response.text
-        
+
     except Exception as e:
-        return f"챗봇 응답 생성 중 오류가 발생했습니다: {str(e)}"
+        return f"챗봇 응답 생성 중 오류가 발생했습니다: {str(e)}\n\nGemini API 상태를 확인해주세요."
 
 def save_essay_to_sheet(username, user_name, topic, essay_content, score, feedback):
     """논술문을 구글시트에 저장"""
