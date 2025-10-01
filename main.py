@@ -119,8 +119,33 @@ def extract_score_from_feedback(feedback):
 def get_ai_feedback(essay_text, topic):
     """Gemini AI를 통한 영어 논술 피드백"""
     try:
-        # 최신 API에서 사용 가능한 모델명
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
+        # 여러 모델명 시도
+        model_names = [
+            'gemini-1.5-pro-latest',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash',
+            'gemini-pro',
+            'models/gemini-1.5-pro',
+            'models/gemini-pro'
+        ]
+
+        model = None
+        last_error = None
+
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # 모델 생성 성공 확인을 위해 간단한 테스트
+                test_response = model.generate_content("test")
+                if test_response:
+                    break
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        if not model:
+            return f"사용 가능한 Gemini 모델을 찾을 수 없습니다. 마지막 오류: {last_error}\n\n총점: 0/100점"
         
         prompt = f"""
         한국 학생이 작성한 영어 논술문을 평가해주세요.
@@ -185,8 +210,30 @@ def get_ai_feedback(essay_text, topic):
 def get_chatbot_response(user_message, topic, conversation_history):
     """AI 챗봇 응답 생성 - 소크라테스식 질문 중심 + 제한적 아이디어 제공"""
     try:
-        # 최신 API에서 사용 가능한 모델명
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
+        # 여러 모델명 시도
+        model_names = [
+            'gemini-1.5-pro-latest',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash',
+            'gemini-pro',
+            'models/gemini-1.5-pro',
+            'models/gemini-pro'
+        ]
+
+        model = None
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # 간단한 테스트
+                test_response = model.generate_content("test")
+                if test_response:
+                    break
+            except:
+                continue
+
+        if not model:
+            return "사용 가능한 Gemini 모델을 찾을 수 없습니다. API 키를 확인해주세요."
         
         context = ""
         if conversation_history:
