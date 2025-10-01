@@ -119,8 +119,8 @@ def extract_score_from_feedback(feedback):
 def get_ai_feedback(essay_text, topic):
     """Gemini AI를 통한 영어 논술 피드백"""
     try:
-        # 2025년 안정 버전 모델명
-        model = genai.GenerativeModel('gemini-pro')
+        # 최신 API에서 사용 가능한 모델명
+        model = genai.GenerativeModel('gemini-1.5-pro-latest')
         
         prompt = f"""
         한국 학생이 작성한 영어 논술문을 평가해주세요.
@@ -185,8 +185,8 @@ def get_ai_feedback(essay_text, topic):
 def get_chatbot_response(user_message, topic, conversation_history):
     """AI 챗봇 응답 생성 - 소크라테스식 질문 중심 + 제한적 아이디어 제공"""
     try:
-        # 2025년 안정 버전 모델명
-        model = genai.GenerativeModel('gemini-pro')
+        # 최신 API에서 사용 가능한 모델명
+        model = genai.GenerativeModel('gemini-1.5-pro-latest')
         
         context = ""
         if conversation_history:
