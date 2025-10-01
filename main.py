@@ -24,11 +24,12 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
 SERVICE_ACCOUNT_FILE = 'credentials.json'
 SHEET_ID = '1_HkNcnWX_31GhJwDcT3a2D41BJvbF9Njmwi5d5T8pWQ'
 
-# Gemini AI 설정
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except:
-    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+# Gemini API 키 가져오기
+def get_gemini_api_key():
+    try:
+        return st.secrets["GEMINI_API_KEY"]
+    except:
+        return os.getenv('GEMINI_API_KEY')
 
 # 교사 계정 설정 (고정)
 TEACHER_USERNAME = "teacher"
@@ -119,15 +120,18 @@ def extract_score_from_feedback(feedback):
 def get_ai_feedback(essay_text, topic):
     """Gemini AI를 통한 영어 논술 피드백"""
     try:
+        # API 키 설정
+        api_key = get_gemini_api_key()
+        if not api_key:
+            return "Gemini API 키가 설정되지 않았습니다.\n\n총점: 0/100점"
+
+        genai.configure(api_key=api_key)
+
         # 여러 모델명 시도
         model_names = [
-            'gemini-1.5-pro-latest',
             'gemini-1.5-pro',
-            'gemini-1.5-flash-latest',
             'gemini-1.5-flash',
-            'gemini-pro',
-            'models/gemini-1.5-pro',
-            'models/gemini-pro'
+            'gemini-pro'
         ]
 
         model = None
@@ -136,10 +140,7 @@ def get_ai_feedback(essay_text, topic):
         for model_name in model_names:
             try:
                 model = genai.GenerativeModel(model_name)
-                # 모델 생성 성공 확인을 위해 간단한 테스트
-                test_response = model.generate_content("test")
-                if test_response:
-                    break
+                break
             except Exception as e:
                 last_error = str(e)
                 continue
@@ -210,25 +211,25 @@ def get_ai_feedback(essay_text, topic):
 def get_chatbot_response(user_message, topic, conversation_history):
     """AI 챗봇 응답 생성 - 소크라테스식 질문 중심 + 제한적 아이디어 제공"""
     try:
+        # API 키 설정
+        api_key = get_gemini_api_key()
+        if not api_key:
+            return "Gemini API 키가 설정되지 않았습니다."
+
+        genai.configure(api_key=api_key)
+
         # 여러 모델명 시도
         model_names = [
-            'gemini-1.5-pro-latest',
             'gemini-1.5-pro',
-            'gemini-1.5-flash-latest',
             'gemini-1.5-flash',
-            'gemini-pro',
-            'models/gemini-1.5-pro',
-            'models/gemini-pro'
+            'gemini-pro'
         ]
 
         model = None
         for model_name in model_names:
             try:
                 model = genai.GenerativeModel(model_name)
-                # 간단한 테스트
-                test_response = model.generate_content("test")
-                if test_response:
-                    break
+                break
             except:
                 continue
 
