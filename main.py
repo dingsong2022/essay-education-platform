@@ -129,9 +129,10 @@ def get_ai_feedback(essay_text, topic):
 
         # 여러 모델을 순차적으로 시도 (할당량 초과 대비)
         model_names = [
+            'gemini-2.5-flash',
+            'gemini-2.5-pro',
             'gemini-1.5-flash',
-            'gemini-pro',
-            'gemini-1.5-pro'
+            'gemini-pro'
         ]
 
         model = None
@@ -220,9 +221,10 @@ def get_chatbot_response(user_message, topic, conversation_history):
 
         # 여러 모델을 순차적으로 시도 (할당량 초과 대비)
         model_names = [
+            'gemini-2.5-flash',
+            'gemini-2.5-pro',
             'gemini-1.5-flash',
-            'gemini-pro',
-            'gemini-1.5-pro'
+            'gemini-pro'
         ]
 
         model = None
