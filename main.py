@@ -878,7 +878,7 @@ def main():
                             st.info("임시 저장 기능은 추후 구현 예정입니다.")
                     
                     with col2:
-                        if st.button("🤖 AI 평가 받기", type="primary"):
+                        if st.button("📝 제출하기", type="primary"):
                             word_count = len(essay_content.split()) if essay_content else 0
                             if not essay_content or word_count < 10:
                                 st.error("최소 10단어 이상의 논술문을 작성해주세요.")
@@ -886,46 +886,35 @@ def main():
                                 with st.spinner("🤖 AI가 논술문을 분석하고 있습니다... (30초 정도 소요)"):
                                     feedback = get_ai_feedback(essay_content, selected_topic)
                                     score = extract_score_from_feedback(feedback)
-                                    
+
                                     if "오류가 발생했습니다" not in feedback and score > 0:
-                                        st.success("✅ AI 평가가 완료되었습니다!")
-                                        
-                                        col_score1, col_score2, col_score3 = st.columns(3)
-                                        with col_score2:
-                                            st.metric("📊 총점", f"{score}/100점", delta=None)
-                                        
-                                        st.markdown("### 📋 AI 피드백 결과")
-                                        st.markdown(feedback)
-                                        
-                                        st.session_state.feedback_ready = True
-                                        st.session_state.current_feedback = feedback
-                                        st.session_state.current_score = score
-                                        st.session_state.current_topic = selected_topic
-                                        st.session_state.current_essay = essay_content
-                                        
+                                        # 자동 저장
+                                        with st.spinner("💾 결과를 저장하는 중..."):
+                                            success, message = save_essay_to_sheet(
+                                                st.session_state.username,
+                                                st.session_state.user_name,
+                                                selected_topic,
+                                                essay_content,
+                                                score,
+                                                feedback
+                                            )
+
+                                        if success:
+                                            st.success("✅ AI 평가가 완료되고 결과가 저장되었습니다!")
+                                            st.balloons()
+
+                                            col_score1, col_score2, col_score3 = st.columns(3)
+                                            with col_score2:
+                                                st.metric("📊 총점", f"{score}/100점", delta=None)
+
+                                            st.markdown("### 📋 AI 피드백 결과")
+                                            st.markdown(feedback)
+                                        else:
+                                            st.error(f"AI 평가는 완료되었으나 저장 중 오류 발생: {message}")
+                                            st.markdown("### 📋 AI 피드백 결과")
+                                            st.markdown(feedback)
                                     else:
                                         st.error("AI 평가 중 오류가 발생했거나 점수를 추출할 수 없습니다.")
-                    
-                    if st.session_state.get('feedback_ready', False):
-                        st.markdown("---")
-                        col_save1, col_save2, col_save3 = st.columns([1, 2, 1])
-                        with col_save2:
-                            if st.button("💾 결과 저장하기", type="secondary", use_container_width=True, key="save_results"):
-                                with st.spinner("저장 중..."):
-                                    success, message = save_essay_to_sheet(
-                                        st.session_state.username,
-                                        st.session_state.user_name,
-                                        st.session_state.current_topic,
-                                        st.session_state.current_essay,
-                                        st.session_state.current_score,
-                                        st.session_state.current_feedback
-                                    )
-                                if success:
-                                    st.success(message)
-                                    st.balloons()
-                                    st.session_state.feedback_ready = False
-                                else:
-                                    st.error(message)
                     
                     with st.expander("📋 영어 논술 작성 가이드"):
                         st.markdown("""
