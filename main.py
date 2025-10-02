@@ -879,8 +879,9 @@ def main():
                     
                     with col2:
                         if st.button("🤖 AI 평가 받기", type="primary"):
-                            if not essay_content or len(essay_content.strip()) < 50:
-                                st.error("최소 50글자 이상의 논술문을 작성해주세요.")
+                            word_count = len(essay_content.split()) if essay_content else 0
+                            if not essay_content or word_count < 10:
+                                st.error("최소 10단어 이상의 논술문을 작성해주세요.")
                             else:
                                 with st.spinner("🤖 AI가 논술문을 분석하고 있습니다... (30초 정도 소요)"):
                                     feedback = get_ai_feedback(essay_content, selected_topic)
