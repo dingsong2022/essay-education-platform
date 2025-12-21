@@ -8,6 +8,8 @@ import google.generativeai as genai
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import redis
+import json
 
 # 환경 변수는 Streamlit Cloud에서 secrets로 관리됨
 
@@ -34,6 +36,61 @@ def get_gemini_api_key():
 # 교사 계정 설정 (고정)
 TEACHER_USERNAME = "teacher"
 TEACHER_PASSWORD = "teacher123"
+
+# Redis 연결 및 캐시 설정
+@st.cache_resource
+def get_redis_client():
+    """Redis 클라이언트 연결"""
+    try:
+        # Streamlit Cloud에서 secrets 사용
+        try:
+            redis_url = st.secrets.get("REDIS_URL", "redis://localhost:6379")
+        except:
+            # 로컬에서는 환경 변수 또는 기본값 사용
+            redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
+
+        client = redis.from_url(redis_url, decode_responses=True)
+        client.ping()  # 연결 테스트
+        return client
+    except Exception as e:
+        st.warning(f"Redis 연결 실패 (캐시 없이 계속): {e}")
+        return None
+
+# 캐시 TTL 설정 (초 단위)
+CACHE_TTL_USERS = 300  # 사용자 정보: 5분
+CACHE_TTL_ESSAYS = 60   # 논술 데이터: 1분 (자주 변경될 수 있음)
+
+def get_from_cache(key):
+    """캐시에서 데이터 조회"""
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            data = redis_client.get(key)
+            if data:
+                return json.loads(data)
+    except Exception as e:
+        pass  # 캐시 실패 시 조용히 무시
+    return None
+
+def set_to_cache(key, value, ttl=300):
+    """캐시에 데이터 저장"""
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            redis_client.setex(key, ttl, json.dumps(value))
+    except Exception as e:
+        pass  # 캐시 실패 시 조용히 무시
+
+def invalidate_cache(pattern):
+    """캐시 무효화 (패턴 매칭)"""
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            keys = redis_client.keys(pattern)
+            if keys:
+                redis_client.delete(*keys)
+    except Exception as e:
+        pass  # 캐시 실패 시 조용히 무시
 
 @st.cache_resource
 def get_google_sheets():
@@ -64,43 +121,60 @@ def login_teacher(username, password):
     return str(username).strip() == TEACHER_USERNAME and str(password).strip() == TEACHER_PASSWORD
 
 def register_user(username, password, name):
-    """사용자 등록 함수"""
+    """사용자 등록 함수 (Redis 캐시 무효화 포함)"""
     try:
         sheet = get_google_sheets()
         if not sheet:
             return False, "Google Sheets 연결 실패"
-        
+
         users_sheet = sheet.worksheet('사용자정보')
         existing_users = users_sheet.get_all_records()
-        
+
         for user in existing_users:
             if str(user['아이디']).strip() == str(username).strip():
                 return False, "이미 존재하는 아이디입니다"
-        # 평문 암호 저장 (교육용)        
+        # 평문 암호 저장 (교육용)
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         users_sheet.append_row([username, password, name, current_date])
-        
+
+        # 사용자 캐시 무효화
+        invalidate_cache("users:*")
+
         return True, "회원가입이 완료되었습니다!"
-        
+
     except Exception as e:
         return False, f"등록 중 오류 발생: {str(e)}"
 
 def login_user(username, password):
-    """사용자 로그인 함수"""
+    """사용자 로그인 함수 (Redis 캐시 적용)"""
     try:
-        sheet = get_google_sheets()
-        if not sheet:
-            return False, "Google Sheets 연결 실패", None
-        
-        users_sheet = sheet.worksheet('사용자정보')
-        users = users_sheet.get_all_records()
-        
+        # 캐시 키 생성
+        cache_key = f"users:all"
+
+        # 캐시에서 먼저 조회
+        cached_users = get_from_cache(cache_key)
+
+        if cached_users is None:
+            # 캐시 미스 - Google Sheets에서 조회
+            sheet = get_google_sheets()
+            if not sheet:
+                return False, "Google Sheets 연결 실패", None
+
+            users_sheet = sheet.worksheet('사용자정보')
+            users = users_sheet.get_all_records()
+
+            # 캐시에 저장
+            set_to_cache(cache_key, users, CACHE_TTL_USERS)
+        else:
+            # 캐시 히트
+            users = cached_users
+
         for user in users:
             if str(user['아이디']).strip() == str(username).strip() and str(user['비밀번호']).strip() == str(password).strip():
                 return True, "로그인 성공!", user['이름']
-        
+
         return False, "아이디 또는 비밀번호가 올바르지 않습니다", None
-        
+
     except Exception as e:
         return False, f"로그인 중 오류 발생: {str(e)}", None
 
@@ -288,57 +362,89 @@ def get_chatbot_response(user_message, topic, conversation_history):
         return f"챗봇 응답 생성 중 오류가 발생했습니다: {str(e)}\n\nGemini API 상태를 확인해주세요."
 
 def save_essay_to_sheet(username, user_name, topic, essay_content, score, feedback):
-    """논술문을 구글시트에 저장"""
+    """논술문을 구글시트에 저장 (Redis 캐시 무효화 포함)"""
     try:
         sheet = get_google_sheets()
         if not sheet:
             return False, "Google Sheets 연결 실패"
-        
+
         try:
             essay_sheet = sheet.worksheet('논술데이터')
         except gspread.WorksheetNotFound:
             essay_sheet = sheet.add_worksheet(title='논술데이터', rows=1000, cols=7)
             essay_sheet.append_row(['아이디', '이름', '날짜', '주제', '논술문', '점수', '피드백'])
-        
+
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row_data = [username, user_name, current_date, topic, essay_content, str(score), feedback]
         essay_sheet.append_row(row_data)
-        
+
+        # 논술 데이터 캐시 무효화 (해당 사용자 및 전체 데이터)
+        invalidate_cache(f"essays:user:{username}")
+        invalidate_cache("essays:all")
+
         return True, "논술문이 성공적으로 저장되었습니다!"
-        
+
     except Exception as e:
         return False, f"저장 중 오류 발생: {str(e)}"
 
 def get_user_essays(username):
-    """사용자의 논술 작성 이력 가져오기"""
+    """사용자의 논술 작성 이력 가져오기 (Redis 캐시 적용)"""
     try:
-        sheet = get_google_sheets()
-        if not sheet:
-            return None, "Google Sheets 연결 실패"
-        
-        essay_sheet = sheet.worksheet('논술데이터')
-        all_data = essay_sheet.get_all_records()
-        user_essays = [row for row in all_data if row['아이디'] == username]
-        user_essays.sort(key=lambda x: x['날짜'], reverse=True)
-        
+        # 캐시 키 생성
+        cache_key = f"essays:user:{username}"
+
+        # 캐시에서 먼저 조회
+        cached_essays = get_from_cache(cache_key)
+
+        if cached_essays is None:
+            # 캐시 미스 - Google Sheets에서 조회
+            sheet = get_google_sheets()
+            if not sheet:
+                return None, "Google Sheets 연결 실패"
+
+            essay_sheet = sheet.worksheet('논술데이터')
+            all_data = essay_sheet.get_all_records()
+            user_essays = [row for row in all_data if row['아이디'] == username]
+            user_essays.sort(key=lambda x: x['날짜'], reverse=True)
+
+            # 캐시에 저장
+            set_to_cache(cache_key, user_essays, CACHE_TTL_ESSAYS)
+        else:
+            # 캐시 히트
+            user_essays = cached_essays
+
         return user_essays, None
-        
+
     except Exception as e:
         return None, f"데이터 조회 중 오류: {str(e)}"
 
 def get_all_essays():
-    """모든 학생의 논술 데이터 가져오기 (교사용)"""
+    """모든 학생의 논술 데이터 가져오기 (교사용, Redis 캐시 적용)"""
     try:
-        sheet = get_google_sheets()
-        if not sheet:
-            return None, "Google Sheets 연결 실패"
-        
-        essay_sheet = sheet.worksheet('논술데이터')
-        all_data = essay_sheet.get_all_records()
-        all_data.sort(key=lambda x: x['날짜'], reverse=True)
-        
+        # 캐시 키 생성
+        cache_key = "essays:all"
+
+        # 캐시에서 먼저 조회
+        cached_essays = get_from_cache(cache_key)
+
+        if cached_essays is None:
+            # 캐시 미스 - Google Sheets에서 조회
+            sheet = get_google_sheets()
+            if not sheet:
+                return None, "Google Sheets 연결 실패"
+
+            essay_sheet = sheet.worksheet('논술데이터')
+            all_data = essay_sheet.get_all_records()
+            all_data.sort(key=lambda x: x['날짜'], reverse=True)
+
+            # 캐시에 저장
+            set_to_cache(cache_key, all_data, CACHE_TTL_ESSAYS)
+        else:
+            # 캐시 히트
+            all_data = cached_essays
+
         return all_data, None
-        
+
     except Exception as e:
         return None, f"데이터 조회 중 오류: {str(e)}"
 
@@ -1241,8 +1347,6 @@ def main():
                 st.sidebar.info("통계를 불러오는 중...")
             
             st.sidebar.markdown("---")
-            st.sidebar.markdown("### 💡 팁")
-            st.sidebar.info("정기적으로 논술을 작성하면 실력이 향상됩니다!")
 
 if __name__ == "__main__":
     main()

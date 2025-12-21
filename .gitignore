@@ -223,3 +223,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Redis
+dump.rdb
+*.rdb
+
